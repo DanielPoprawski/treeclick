@@ -1,0 +1,116 @@
+#  _______                _______ _  _       _             ______    _____  
+# (_______)              (_______) |(_)     | |           (_____ \  (_____) 
+#     _  ____ _____ _____ _      | | _  ____| |  _    _   _ ____) ) _  __ _ 
+#    | |/ ___) ___ | ___ | |     | || |/ ___) |_/ )  | | | / ____/ | |/ /| |
+#    | | |   | ____| ____| |_____| || ( (___|  _ (    \ V / (_____ |   /_| |
+#    |_|_|   |_____)_____)\______)\_)_|\____)_| \_)    \_/|_______|_)_____/ 
+
+
+# Plugin that allows players to instantly cut down entire trees with a single click
+
+## Main plugin toggle
+enabled: true
+
+## World settings
+worlds:
+  # Define which worlds the plugin should be active in
+  enabled_worlds:
+    - world
+    - world_nether
+    - world_the_end
+  # Set to true to enable the plugin in all worlds
+  all_worlds: false
+
+## Tool settings
+tools:
+  # If true, player must be holding an axe to activate the plugin
+  require_axe: true
+
+# Tree cutting behavior
+cutting:
+  # If true, entire tree will be chopped instantly
+  instant_chop: true
+  # If false, tree will be chopped at the speed of the tool being used
+  # If true, each log will break one by one, depending on what axe you're using
+  use_tool_speed: true
+  # If false, tree will break layer by layer at determined speed (in ticks)
+  cutting_speed: 2
+  # Tree type definitions - each tree has its own leaf, log, and sapling type
+  trees:
+    oak:
+      leaf_block: OAK_LEAVES
+      log_block: OAK_LOG
+      sapling: OAK_SAPLING
+    spruce:
+      leaf_block: SPRUCE_LEAVES
+      log_block: SPRUCE_LOG
+      sapling: SPRUCE_SAPLING
+    birch:
+      leaf_block: BIRCH_LEAVES
+      log_block: BIRCH_LOG
+      sapling: BIRCH_SAPLING
+    jungle:
+      leaf_block: JUNGLE_LEAVES
+      log_block: JUNGLE_LOG
+      sapling: JUNGLE_SAPLING
+    acacia:
+      leaf_block: ACACIA_LEAVES
+      log_block: ACACIA_LOG
+      sapling: ACACIA_SAPLING
+    dark_oak:
+      leaf_block: DARK_OAK_LEAVES
+      log_block: DARK_OAK_LOG
+      sapling: DARK_OAK_SAPLING
+    mangrove:
+      leaf_block: MANGROVE_LEAVES
+      log_block: MANGROVE_LOG
+      sapling: MANGROVE_PROPAGULE
+    cherry:
+      leaf_block: CHERRY_LEAVES
+      log_block: CHERRY_LOG
+      sapling: CHERRY_SAPLING
+    crimson:
+      leaf_block: NETHER_WART_BLOCK
+      log_block: CRIMSON_STEM
+      sapling: CRIMSON_FUNGUS
+    warped:
+      leaf_block: WARPED_WART_BLOCK
+      log_block: WARPED_STEM
+      sapling: WARPED_FUNGUS
+    pale_oak:
+      leaf_block: PALE_OAK_LEAVES
+      log_block: PALE_OAK_LOG
+      sapling: PALE_OAK_SAPLING
+     
+
+
+# Item drop settings
+drops:
+  # If true, items will be placed directly into player's inventory
+  to_inventory: false
+  # If player's inventory is full and to_inventory is true:
+  drop_if_full: true
+  # Apply fortune enchantment if player's axe has it
+  respect_fortune: true
+  # Drop experience orbs when breaking logs
+  drop_exp: true
+  
+## Safety
+safety:
+    safe_blocks:
+        - OAK_WOOD
+        - SPRUCE_WOOD
+        - BIRCH_WOOD
+        - JUNGLE_WOOD
+        - ACACIA_WOOD
+        - CRIMSON_WOOD
+        - DARK_OAK_WOOD
+        - PALE_OAK_WOOD
+        - MANGROVE_WOOD
+        - CHERRY_WOOD
+        - WARPED_WOOD
+        
+# Permissions
+permissions:
+  use: "treeclick.use"
+  admin: "treeclick.admin"

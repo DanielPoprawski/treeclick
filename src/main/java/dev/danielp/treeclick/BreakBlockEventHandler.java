@@ -7,16 +7,30 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
+import java.util.Random;
 import java.util.Set;
 
+import org.bukkit.GameMode;
 import org.bukkit.Material;
+import org.bukkit.Sound;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.Damageable;
+import org.bukkit.potion.PotionEffectType;
+import org.bukkit.scheduler.BukkitRunnable;
 
 public class BreakBlockEventHandler implements Listener {
+
+	private main Plugin;
+
+	public BreakBlockEventHandler(main plugin) {
+		this.Plugin = plugin;
+	}
 
 	static final HashSet<Material> LOGS = new HashSet<Material>(Arrays.asList(Material.OAK_LOG, Material.SPRUCE_LOG,
 			Material.BIRCH_LOG, Material.JUNGLE_LOG, Material.ACACIA_LOG, Material.DARK_OAK_LOG, Material.MANGROVE_LOG,
@@ -24,90 +38,166 @@ public class BreakBlockEventHandler implements Listener {
 
 	static final HashSet<Material> AXES = new HashSet<Material>(Arrays.asList(Material.WOODEN_AXE, Material.STONE_AXE,
 			Material.IRON_AXE, Material.GOLDEN_AXE, Material.DIAMOND_AXE, Material.NETHERITE_AXE));
-	
-	static final HashSet<Material> LEAVES = new HashSet<Material>(Arrays.asList(Material.OAK_LEAVES, Material.SPRUCE_LEAVES,
-			Material.BIRCH_LEAVES, Material.JUNGLE_LEAVES, Material.ACACIA_LEAVES, Material.DARK_OAK_LEAVES, Material.MANGROVE_LEAVES,
-			Material.CHERRY_LEAVES, Material.CRIMSON_STEM, Material.WARPED_STEM, Material.PALE_OAK_LEAVES));
-	
-	
+
+	static final HashSet<Material> LEAVES = new HashSet<Material>(
+			Arrays.asList(Material.OAK_LEAVES, Material.SPRUCE_LEAVES, Material.BIRCH_LEAVES, Material.JUNGLE_LEAVES,
+					Material.ACACIA_LEAVES, Material.DARK_OAK_LEAVES, Material.MANGROVE_LEAVES, Material.CHERRY_LEAVES,
+					Material.CRIMSON_STEM, Material.WARPED_STEM, Material.PALE_OAK_LEAVES));
 
 	@EventHandler
 	public void blockBreakEvent(BlockBreakEvent e) {
 
-		if (!isLog(e.getBlock()))
+		// Check to make sure the event should be firing
+		if (!isLog(e.getBlock().getType()))
 			return;
-		
-		if (!isAxe(e.getPlayer().getInventory().getItemInMainHand().getType()) && !isAxe(e.getPlayer().getInventory().getItemInOffHand().getType()))
+		if (!isAxe(e.getPlayer().getInventory().getItemInMainHand().getType()))
 			return;
-		
+		if (e.getPlayer().getGameMode() != GameMode.SURVIVAL)
+			return;
+
 		Set<Block> visitedLogs = new HashSet<Block>();
 		Queue<Block> logQueue = new LinkedList<Block>();
 		List<Block> blocksToBreak = new ArrayList<Block>();
 
+		// Add initial block
 		logQueue.add(e.getBlock());
 		visitedLogs.add(e.getBlock());
 
 		int iterationCount = 0;
 
+		// Start breaking the stem
 		while (!logQueue.isEmpty() && iterationCount < 100000) {
 			iterationCount++;
 			Block b = logQueue.remove();
 
-			if (isLog(b)) {
+			if (isLog(b.getType())) {
 				blocksToBreak.add(b);
 				for (Block adjacent : getAdjacentBlocks(b)) {
 					iterationCount++;
 					if (visitedLogs.contains(adjacent))
 						continue;
-					if (!isLog(adjacent))
+					if (!isLog(adjacent.getType()))
 						continue;
 					logQueue.add(adjacent);
 					visitedLogs.add(adjacent);
 				}
 			}
-			
+
 		}
-		
-		Queue<SimpleEntry<Block, Integer>> leafQueue = new LinkedList<SimpleEntry<Block, Integer>>();
+
+		// Grab the first leaves
+		Queue<SimpleEntry<Block, Integer>> leafQueue = new LinkedList<SimpleEntry<Block, Integer>>(); // Entry is to
+																										// make sure
+																										// only leaves
+																										// of a certain
+																										// distance away
+																										// are destroyed
 		Set<Block> visitedLeaves = new HashSet<Block>();
-		
+
 		for (Block b : visitedLogs) {
-			for (Block b1: getHorizontallyAdjacentBlocks(b)) {
+			for (Block b1 : getHorizontallyAdjacentBlocks(b)) {
 				iterationCount++;
-				if (isLeaf(b1)) {
+				if (isLeaf(b1.getType())) {
 					leafQueue.add(new SimpleEntry<Block, Integer>(b1, 0));
 					visitedLeaves.add(b1);
 				}
 			}
 		}
-		
+
+		// Start iterating until no more leaves are found within reasonable range
 		while (!leafQueue.isEmpty()) {
 			iterationCount++;
 			SimpleEntry<Block, Integer> entry = leafQueue.remove();
 			Block b = entry.getKey();
 			int d = entry.getValue();
-			
+
 			blocksToBreak.add(b);
-			
+
 			if (d < 5) {
 				for (Block adjacent : getAdjacentBlocks(b)) {
 					if (visitedLeaves.contains(adjacent))
 						continue;
-					if (!isLeaf(adjacent))
+					if (!isLeaf(adjacent.getType()))
 						continue;
-					leafQueue.add(new SimpleEntry<>(adjacent, d+1));
+					leafQueue.add(new SimpleEntry<>(adjacent, d + 1));
 					visitedLeaves.add(adjacent);
 				}
 			}
 		}
+
+		// Player's axe
+		ItemStack playerAxe = e.getPlayer().getInventory().getItemInMainHand();
+		double unbreaking_level = playerAxe.getEnchantmentLevel(Enchantment.UNBREAKING);
+		double efficiency_level = playerAxe.getEnchantmentLevel(Enchantment.EFFICIENCY);
+		int haste_level = e.getPlayer().hasPotionEffect(PotionEffectType.HASTE) ? e.getPlayer().getPotionEffect(PotionEffectType.HASTE).getAmplifier() : 0;
+		org.bukkit.inventory.meta.Damageable d = (Damageable) playerAxe.getItemMeta();
+
+		double cutting_speed = 3.0;
+		double tool_multiplier = 1.0;
+		switch (playerAxe.getType()) {
+			case WOODEN_AXE:
+				tool_multiplier = 2.0;
+				break;
+			case STONE_AXE:
+				tool_multiplier = 4.0;
+				break;
+			case IRON_AXE:
+				tool_multiplier = 6.0;
+				break;
+			case DIAMOND_AXE:
+				tool_multiplier = 8.0;
+				break;
+			case NETHERITE_AXE:
+				tool_multiplier = 9.0;
+				break;
+			case GOLDEN_AXE:
+				tool_multiplier = 12.0;
+				break;
+			default:
+				tool_multiplier = 1.0;
+				break;
+		}
+		cutting_speed /= tool_multiplier;
+		e.getPlayer().sendMessage("Cutting speed after tool is taken into account: " + cutting_speed);
+		if (efficiency_level > 0)
+			cutting_speed /= (Math.pow(efficiency_level, 2) + 1);
+		if (haste_level > 0)
+			cutting_speed /= (1 + 0.2 * haste_level);
+		final int cutting_speed_ticks = (int) Math.ceil(cutting_speed * 20);
 		
-		
-		
-		blocksToBreak.forEach((Block b) -> {
-			b.breakNaturally();
+
+		blocksToBreak.sort((a, b) -> {
+			if (isLog(a.getType()) && !isLog(b.getType()))
+				return -1;
+			if (!isLog(a.getType()) && isLog(b.getType()))
+				return 1;
+			return 0;
 		});
 
-		e.getPlayer().sendMessage("Iteration count: " + iterationCount);
+		// Break all blocks and leaves
+		for (int i = 0; i < blocksToBreak.size(); i++) {
+			Block b = blocksToBreak.get(i);
+			final long mult = isLog(b.getType()) ? 2 : 1;
+			Random r = new Random();
+			new BukkitRunnable() {
+				@Override
+				public void run() {
+					// Break the block
+					b.breakNaturally();
+					// Play appropriate sound for block breaking
+					b.getWorld().playSound(b.getLocation(),
+							mult == 2 ? Sound.BLOCK_WOOD_BREAK : Sound.BLOCK_GRASS_BREAK, 0.1f, 1f);
+
+					// Damage the player's axe and account for unbreaking enchant
+					if (mult == 1)
+						return;
+
+					if (r.nextDouble() < (1 / (1 + unbreaking_level)))
+						d.setDamage(d.getDamage() + 1);
+					playerAxe.setItemMeta(d);
+				}
+			}.runTaskLater(Plugin, isLog(b.getType())? i * cutting_speed_ticks : i);
+		}
 
 	}
 
@@ -116,29 +206,20 @@ public class BreakBlockEventHandler implements Listener {
 				b.getRelative(BlockFace.EAST), b.getRelative(BlockFace.WEST), b.getRelative(BlockFace.UP),
 				b.getRelative(BlockFace.DOWN)));
 	}
-	
+
 	public static HashSet<Block> getHorizontallyAdjacentBlocks(Block b) {
 		return new HashSet<Block>(Arrays.asList(b.getRelative(BlockFace.NORTH), b.getRelative(BlockFace.SOUTH),
 				b.getRelative(BlockFace.EAST), b.getRelative(BlockFace.WEST)));
-	}
-	
-
-	public static boolean isLog(Block b) {
-		return LOGS.contains(b.getType());
 	}
 
 	public static boolean isLog(Material m) {
 		return LOGS.contains(m);
 	}
-	
-	public static boolean isLeaf(Block b) {
-		return LEAVES.contains(b.getType());
-	}
 
 	public static boolean isLeaf(Material m) {
 		return LEAVES.contains(m);
 	}
-	
+
 	public static boolean isAxe(Material m) {
 		return AXES.contains(m);
 	}
