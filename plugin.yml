@@ -1,0 +1,16 @@
+# ---------------------------------------
+#          IGNORE THIS YAML FILE
+# * This file is for the developer
+# * No configuration here
+# ---------------------------------------
+name: TreeClick
+main: dev.danielp.treeclick.main
+version: 1.5.0
+author: gelloe
+api-version: 1.21.4
+commands:
+    treeclick:
+        description: 
+        usage: /<command> [update | help]
+        aliases: [tc]
+        permission: treeclick
