@@ -26,31 +26,22 @@ import org.bukkit.scheduler.BukkitRunnable;
 
 public class BreakBlockEventHandler implements Listener {
 
-	private main Plugin;
-
-	public BreakBlockEventHandler(main plugin) {
-		this.Plugin = plugin;
-	}
-
-	static final HashSet<Material> LOGS = new HashSet<Material>(Arrays.asList(Material.OAK_LOG, Material.SPRUCE_LOG,
-			Material.BIRCH_LOG, Material.JUNGLE_LOG, Material.ACACIA_LOG, Material.DARK_OAK_LOG, Material.MANGROVE_LOG,
-			Material.CHERRY_LOG, Material.CRIMSON_STEM, Material.WARPED_STEM, Material.PALE_OAK_LOG));
-
-	static final HashSet<Material> AXES = new HashSet<Material>(Arrays.asList(Material.WOODEN_AXE, Material.STONE_AXE,
+	private main Plugin = main.getPlugin(main.class);
+	final HashSet<Material> LOGS = ConfigManager.getLogs();
+	final HashSet<Material> AXES = new HashSet<Material>(Arrays.asList(Material.WOODEN_AXE, Material.STONE_AXE,
 			Material.IRON_AXE, Material.GOLDEN_AXE, Material.DIAMOND_AXE, Material.NETHERITE_AXE));
-
-	static final HashSet<Material> LEAVES = new HashSet<Material>(
-			Arrays.asList(Material.OAK_LEAVES, Material.SPRUCE_LEAVES, Material.BIRCH_LEAVES, Material.JUNGLE_LEAVES,
-					Material.ACACIA_LEAVES, Material.DARK_OAK_LEAVES, Material.MANGROVE_LEAVES, Material.CHERRY_LEAVES,
-					Material.CRIMSON_STEM, Material.WARPED_STEM, Material.PALE_OAK_LEAVES));
+	final HashSet<Material> LEAVES = ConfigManager.getLeaves();
 
 	@EventHandler
 	public void blockBreakEvent(BlockBreakEvent e) {
-
 		// Check to make sure the event should be firing
+		if (!ConfigManager.isEnabled())
+			return;
+		if (!ConfigManager.isWorldEnabled(e.getBlock().getWorld()))
+			return;
 		if (!isLog(e.getBlock().getType()))
 			return;
-		if (!isAxe(e.getPlayer().getInventory().getItemInMainHand().getType()))
+		if (!isAxe(e.getPlayer().getInventory().getItemInMainHand().getType()) && ConfigManager.requireAxe())
 			return;
 		if (e.getPlayer().getGameMode() != GameMode.SURVIVAL)
 			return;
@@ -86,13 +77,10 @@ public class BreakBlockEventHandler implements Listener {
 		}
 
 		// Grab the first leaves
-		Queue<SimpleEntry<Block, Integer>> leafQueue = new LinkedList<SimpleEntry<Block, Integer>>(); // Entry is to
-																										// make sure
-																										// only leaves
-																										// of a certain
-																										// distance away
-																										// are destroyed
+		Queue<SimpleEntry<Block, Integer>> leafQueue = new LinkedList<SimpleEntry<Block, Integer>>();
+		// Entry is to make sure only leaves of a certain distance away are destroyed
 		Set<Block> visitedLeaves = new HashSet<Block>();
+		//TODO: Should there be a distinction between visitedLeaves and visitedLogs? Maybe just visitedBlocks?
 
 		for (Block b : visitedLogs) {
 			for (Block b1 : getHorizontallyAdjacentBlocks(b)) {
@@ -129,42 +117,28 @@ public class BreakBlockEventHandler implements Listener {
 		ItemStack playerAxe = e.getPlayer().getInventory().getItemInMainHand();
 		double unbreaking_level = playerAxe.getEnchantmentLevel(Enchantment.UNBREAKING);
 		double efficiency_level = playerAxe.getEnchantmentLevel(Enchantment.EFFICIENCY);
-		int haste_level = e.getPlayer().hasPotionEffect(PotionEffectType.HASTE) ? e.getPlayer().getPotionEffect(PotionEffectType.HASTE).getAmplifier() : 0;
+		int haste_level = e.getPlayer().hasPotionEffect(PotionEffectType.HASTE)
+				? e.getPlayer().getPotionEffect(PotionEffectType.HASTE).getAmplifier()
+				: 0;
 		org.bukkit.inventory.meta.Damageable d = (Damageable) playerAxe.getItemMeta();
 
 		double cutting_speed = 3.0;
-		double tool_multiplier = 1.0;
-		switch (playerAxe.getType()) {
-			case WOODEN_AXE:
-				tool_multiplier = 2.0;
-				break;
-			case STONE_AXE:
-				tool_multiplier = 4.0;
-				break;
-			case IRON_AXE:
-				tool_multiplier = 6.0;
-				break;
-			case DIAMOND_AXE:
-				tool_multiplier = 8.0;
-				break;
-			case NETHERITE_AXE:
-				tool_multiplier = 9.0;
-				break;
-			case GOLDEN_AXE:
-				tool_multiplier = 12.0;
-				break;
-			default:
-				tool_multiplier = 1.0;
-				break;
-		}
+		double tool_multiplier = switch (playerAxe.getType()) {
+			case WOODEN_AXE -> 2.0;
+			case STONE_AXE -> 4.0;
+			case IRON_AXE -> 6.0;
+			case DIAMOND_AXE -> 8.0;
+			case NETHERITE_AXE -> 9.0;
+			case GOLDEN_AXE -> 12.0;
+			default -> 1.0;
+		};
+
 		cutting_speed /= tool_multiplier;
-		e.getPlayer().sendMessage("Cutting speed after tool is taken into account: " + cutting_speed);
 		if (efficiency_level > 0)
 			cutting_speed /= (Math.pow(efficiency_level, 2) + 1);
 		if (haste_level > 0)
 			cutting_speed /= (1 + 0.2 * haste_level);
 		final int cutting_speed_ticks = (int) Math.ceil(cutting_speed * 20);
-		
 
 		blocksToBreak.sort((a, b) -> {
 			if (isLog(a.getType()) && !isLog(b.getType()))
@@ -196,7 +170,7 @@ public class BreakBlockEventHandler implements Listener {
 						d.setDamage(d.getDamage() + 1);
 					playerAxe.setItemMeta(d);
 				}
-			}.runTaskLater(Plugin, isLog(b.getType())? i * cutting_speed_ticks : i);
+			}.runTaskLater(Plugin, isLog(b.getType()) ? i * cutting_speed_ticks : i);
 		}
 
 	}
@@ -212,15 +186,15 @@ public class BreakBlockEventHandler implements Listener {
 				b.getRelative(BlockFace.EAST), b.getRelative(BlockFace.WEST)));
 	}
 
-	public static boolean isLog(Material m) {
+	public boolean isLog(Material m) {
 		return LOGS.contains(m);
 	}
 
-	public static boolean isLeaf(Material m) {
+	public boolean isLeaf(Material m) {
 		return LEAVES.contains(m);
 	}
 
-	public static boolean isAxe(Material m) {
+	public boolean isAxe(Material m) {
 		return AXES.contains(m);
 	}
 

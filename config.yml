@@ -17,25 +17,26 @@ worlds:
   enabled_worlds:
     - world
     - world_nether
-    - world_the_end
   # Set to true to enable the plugin in all worlds
-  all_worlds: false
-
-## Tool settings
-tools:
-  # If true, player must be holding an axe to activate the plugin
-  require_axe: true
+  all_worlds: true
 
 # Tree cutting behavior
 cutting:
+  require_axe: true
   # If true, entire tree will be chopped instantly
+  require_leaves: true
+  # If true, standalone logs won't be cut down - only trees with leaves growing out of the trunk.
   instant_chop: true
   # If false, tree will be chopped at the speed of the tool being used
   # If true, each log will break one by one, depending on what axe you're using
   use_tool_speed: true
   # If false, tree will break layer by layer at determined speed (in ticks)
   cutting_speed: 2
-  # Tree type definitions - each tree has its own leaf, log, and sapling type
+  # Drop loot directly to player inventory
+  drop_to_inventory: false
+  replant_saplings: true;
+  
+# Tree type definitions - each tree has its own leaf, log, and sapling type
   trees:
     oak:
       leaf_block: OAK_LEAVES
@@ -81,21 +82,9 @@ cutting:
       leaf_block: PALE_OAK_LEAVES
       log_block: PALE_OAK_LOG
       sapling: PALE_OAK_SAPLING
-     
-
-
-# Item drop settings
-drops:
-  # If true, items will be placed directly into player's inventory
-  to_inventory: false
-  # If player's inventory is full and to_inventory is true:
-  drop_if_full: true
-  # Apply fortune enchantment if player's axe has it
-  respect_fortune: true
-  # Drop experience orbs when breaking logs
-  drop_exp: true
   
-## Safety
+## Safety blocks
+# These are the wood variants with bark on all faces. If the plugin detects these on a tree, it will immediately stop and assume that you are destroying a decorative tree
 safety:
     safe_blocks:
         - OAK_WOOD
@@ -113,4 +102,3 @@ safety:
 # Permissions
 permissions:
   use: "treeclick.use"
-  admin: "treeclick.admin"
