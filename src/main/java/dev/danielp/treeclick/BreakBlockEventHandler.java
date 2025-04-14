@@ -28,9 +28,9 @@ public class BreakBlockEventHandler implements Listener {
 
 	private main Plugin = main.getPlugin(main.class);
 	final HashSet<Material> LOGS = ConfigManager.getLogs();
+	final HashSet<Material> LEAVES = ConfigManager.getLeaves();
 	final HashSet<Material> AXES = new HashSet<Material>(Arrays.asList(Material.WOODEN_AXE, Material.STONE_AXE,
 			Material.IRON_AXE, Material.GOLDEN_AXE, Material.DIAMOND_AXE, Material.NETHERITE_AXE));
-	final HashSet<Material> LEAVES = ConfigManager.getLeaves();
 
 	@EventHandler
 	public void blockBreakEvent(BlockBreakEvent e) {
@@ -46,31 +46,27 @@ public class BreakBlockEventHandler implements Listener {
 		if (e.getPlayer().getGameMode() != GameMode.SURVIVAL)
 			return;
 
-		Set<Block> visitedLogs = new HashSet<Block>();
+		Set<Block> visitedBlocks = new HashSet<Block>();
 		Queue<Block> logQueue = new LinkedList<Block>();
 		List<Block> blocksToBreak = new ArrayList<Block>();
 
 		// Add initial block
 		logQueue.add(e.getBlock());
-		visitedLogs.add(e.getBlock());
-
-		int iterationCount = 0;
+		visitedBlocks.add(e.getBlock());
 
 		// Start breaking the stem
-		while (!logQueue.isEmpty() && iterationCount < 100000) {
-			iterationCount++;
+		while (!logQueue.isEmpty()) {
 			Block b = logQueue.remove();
 
 			if (isLog(b.getType())) {
 				blocksToBreak.add(b);
 				for (Block adjacent : getAdjacentBlocks(b)) {
-					iterationCount++;
-					if (visitedLogs.contains(adjacent))
+					if (visitedBlocks.contains(adjacent))
 						continue;
+					visitedBlocks.add(adjacent);
 					if (!isLog(adjacent.getType()))
 						continue;
 					logQueue.add(adjacent);
-					visitedLogs.add(adjacent);
 				}
 			}
 
@@ -79,22 +75,18 @@ public class BreakBlockEventHandler implements Listener {
 		// Grab the first leaves
 		Queue<SimpleEntry<Block, Integer>> leafQueue = new LinkedList<SimpleEntry<Block, Integer>>();
 		// Entry is to make sure only leaves of a certain distance away are destroyed
-		Set<Block> visitedLeaves = new HashSet<Block>();
-		//TODO: Should there be a distinction between visitedLeaves and visitedLogs? Maybe just visitedBlocks?
 
-		for (Block b : visitedLogs) {
+		for (Block b : visitedBlocks) {
 			for (Block b1 : getHorizontallyAdjacentBlocks(b)) {
-				iterationCount++;
 				if (isLeaf(b1.getType())) {
 					leafQueue.add(new SimpleEntry<Block, Integer>(b1, 0));
-					visitedLeaves.add(b1);
+					visitedBlocks.add(b1);
 				}
 			}
 		}
 
 		// Start iterating until no more leaves are found within reasonable range
 		while (!leafQueue.isEmpty()) {
-			iterationCount++;
 			SimpleEntry<Block, Integer> entry = leafQueue.remove();
 			Block b = entry.getKey();
 			int d = entry.getValue();
@@ -103,12 +95,12 @@ public class BreakBlockEventHandler implements Listener {
 
 			if (d < 5) {
 				for (Block adjacent : getAdjacentBlocks(b)) {
-					if (visitedLeaves.contains(adjacent))
+					if (visitedBlocks.contains(adjacent))
 						continue;
 					if (!isLeaf(adjacent.getType()))
 						continue;
 					leafQueue.add(new SimpleEntry<>(adjacent, d + 1));
-					visitedLeaves.add(adjacent);
+					visitedBlocks.add(adjacent);
 				}
 			}
 		}
@@ -122,7 +114,6 @@ public class BreakBlockEventHandler implements Listener {
 				: 0;
 		org.bukkit.inventory.meta.Damageable d = (Damageable) playerAxe.getItemMeta();
 
-		double cutting_speed = 3.0;
 		double tool_multiplier = switch (playerAxe.getType()) {
 			case WOODEN_AXE -> 2.0;
 			case STONE_AXE -> 4.0;
@@ -132,8 +123,8 @@ public class BreakBlockEventHandler implements Listener {
 			case GOLDEN_AXE -> 12.0;
 			default -> 1.0;
 		};
-
-		cutting_speed /= tool_multiplier;
+		double cutting_speed = 3.0 / tool_multiplier;
+		
 		if (efficiency_level > 0)
 			cutting_speed /= (Math.pow(efficiency_level, 2) + 1);
 		if (haste_level > 0)
