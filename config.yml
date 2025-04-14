@@ -92,12 +92,12 @@ safety:
         - BIRCH_WOOD
         - JUNGLE_WOOD
         - ACACIA_WOOD
-        - CRIMSON_WOOD
+        - CRIMSON_HYPHAE
         - DARK_OAK_WOOD
         - PALE_OAK_WOOD
         - MANGROVE_WOOD
         - CHERRY_WOOD
-        - WARPED_WOOD
+        - WARPED_HYPHAE
         
 # Permissions
 permissions:

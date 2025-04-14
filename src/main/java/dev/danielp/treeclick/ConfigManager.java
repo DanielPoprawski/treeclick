@@ -76,6 +76,32 @@ public class ConfigManager {
 		}
 		return safetyBlocks;
 	}
+	
+	public static final Material getLeafFromLog(Material logType) {
+		ConfigurationSection trees = config.getConfigurationSection("cutting.trees");
+		for (String tree : trees.getKeys(false)) {
+			ConfigurationSection treeType = config.getConfigurationSection("cutting.trees." + tree);
+			if (treeType.getString("log_block").equals(logType.name())) {
+				return Material.getMaterial(treeType.getString("leaf_block"));
+				
+			}
+		}
+		myPlugin.getServer().broadcastMessage("LEAF NOT FOUND");
+		return null;
+	}
+	
+	public static final Material getSaplingFromLog(Material logType) {
+		ConfigurationSection trees = config.getConfigurationSection("cutting.trees");
+		for (String tree : trees.getKeys(false)) {
+			ConfigurationSection treeType = config.getConfigurationSection("cutting.trees." + tree);
+			if (treeType.getString("log_block").equals(logType.name())) {
+				return Material.getMaterial(treeType.getString("sapling"));
+				
+			}
+		}
+		myPlugin.getServer().broadcastMessage("LEAF NOT FOUND");
+		return null;
+	}
 
 	public static final boolean requireAxe() {
 		return config.getBoolean("cutting.require_axe");
