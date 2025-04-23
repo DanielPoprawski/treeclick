@@ -7,21 +7,20 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
-import java.util.Random;
 import java.util.Set;
 
+import org.bukkit.Axis;
 import org.bukkit.GameMode;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
-import org.bukkit.enchantments.Enchantment;
+import org.bukkit.block.data.Orientable;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.Damageable;
-import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 
 public class BreakBlockEventHandler implements Listener {
@@ -49,16 +48,15 @@ public class BreakBlockEventHandler implements Listener {
 		Set<Block> visitedBlocks = new HashSet<Block>();
 		Queue<SimpleEntry<Block, Integer>> blockQueue = new LinkedList<SimpleEntry<Block, Integer>>();
 		List<Block> blocksToBreak = new ArrayList<Block>();
-		boolean canceled = false;
 		blockQueue.add(new SimpleEntry<Block, Integer>(e.getBlock(), 0));
 		visitedBlocks.add(e.getBlock());
 		short log_count = 0, leaf_count = 0;
-		
+
 		Material log_type = e.getBlock().getType();
 		Material leaf_type = ConfigManager.getLeafFromLog(log_type);
 		Material sapling_type = ConfigManager.getSaplingFromLog(log_type);
 
-		while (!blockQueue.isEmpty() && !canceled) {
+		while (!blockQueue.isEmpty()) {
 			SimpleEntry<Block, Integer> entry = blockQueue.remove();
 			Block b = entry.getKey();
 			int depth = entry.getValue();
@@ -67,112 +65,32 @@ public class BreakBlockEventHandler implements Listener {
 			} else if (b.getType().equals(leaf_type)) {
 				leaf_count++;
 			}
-//			b.getWorld().spawnParticle(Particle.DUST, b.getLocation().add(0.5, 0.5, 0.5), 100, new Particle.DustOptions(switch (depth) {
-//				case 0 -> Color.LIME;
-//				case 1 -> Color.GREEN;
-//				case 2 -> Color.ORANGE;
-//				case 3 -> Color.YELLOW;
-//				case 4 -> Color.RED;
-//				default -> Color.MAROON;
-//			}, 128.0f));
 
 			blocksToBreak.add(b);
 
-			for (Block adjacent : getAdjacentBlocks(b)) {
+			for (Block adjacent : getNearbyBlocks(b)) {
 				if (visitedBlocks.contains(adjacent))
 					continue;
 				visitedBlocks.add(adjacent);
-				if (adjacent.getType().equals(log_type) && depth < 1) {
-					blockQueue.add(new SimpleEntry<Block, Integer>(adjacent, 0));
+				if (adjacent.getType().equals(log_type)) {
+					if (depth < 1 || ((Orientable) adjacent.getBlockData()).getAxis() != Axis.Y) {
+						blockQueue.add(new SimpleEntry<Block, Integer>(adjacent, 0));
+					} else if (depth >= 1 && depth <= 3) {
+						blockQueue.add(new SimpleEntry<Block, Integer>(adjacent, depth + 1));
+					}
+
 				} else if (adjacent.getType().equals(leaf_type) && depth < 3) {
 					blockQueue.add(new SimpleEntry<Block, Integer>(adjacent, depth + 1));
 				} else if (ConfigManager.getSafetyBlocks().contains(adjacent.getType())) {
-					canceled = true;
-					e.getPlayer().sendMessage("Canceled");
+					return;
 				}
 			}
 
 		}
-		
-		if (log_count > leaf_count)
-			canceled = true;
 
-		// Start breaking the stem
-//		while (!logQueue.isEmpty()) {
-//			Block b = logQueue.remove();
-//
-//			if (isLog(b.getType())) {
-//				blocksToBreak.add(b);
-//				for (Block adjacent : getAdjacentBlocks(b)) {
-//					if (visitedBlocks.contains(adjacent))
-//						continue;
-//					visitedBlocks.add(adjacent);
-//					if (!isLog(adjacent.getType()))
-//						continue;
-//					logQueue.add(adjacent);
-//				}
-//			}
-//
-//		}
-
-		// Grab the first leaves
-//		Queue<SimpleEntry<Block, Integer>> leafQueue = new LinkedList<SimpleEntry<Block, Integer>>();
-//		// Entry is to make sure only leaves of a certain distance away are destroyed
-//
-//		for (Block b : visitedBlocks) {
-//			for (Block b1 : getHorizontallyAdjacentBlocks(b)) {
-//				if (isLeaf(b1.getType())) {
-//					leafQueue.add(new SimpleEntry<Block, Integer>(b1, 0));
-//					visitedBlocks.add(b1);
-//				}
-//			}
-//		}
-
-		// Start iterating until no more leaves are found within reasonable range
-//		while (!leafQueue.isEmpty()) {
-//			SimpleEntry<Block, Integer> entry = leafQueue.remove();
-//			Block b = entry.getKey();
-//			int d = entry.getValue();
-//
-//			blocksToBreak.add(b);
-//
-//			if (d < 5) {
-//				for (Block adjacent : getAdjacentBlocks(b)) {
-//					if (visitedBlocks.contains(adjacent))
-//						continue;
-//					if (!isLeaf(adjacent.getType()))
-//						continue;
-//					leafQueue.add(new SimpleEntry<>(adjacent, d + 1));
-//					visitedBlocks.add(adjacent);
-//				}
-//			}
-//		}
-
-		// Player's axe
-		ItemStack playerAxe = e.getPlayer().getInventory().getItemInMainHand();
-		double unbreaking_level = playerAxe.getEnchantmentLevel(Enchantment.UNBREAKING);
-		double efficiency_level = playerAxe.getEnchantmentLevel(Enchantment.EFFICIENCY);
-		int haste_level = e.getPlayer().hasPotionEffect(PotionEffectType.HASTE)
-				? e.getPlayer().getPotionEffect(PotionEffectType.HASTE).getAmplifier()
-				: 0;
-		org.bukkit.inventory.meta.Damageable d = (Damageable) playerAxe.getItemMeta();
-
-		double tool_multiplier = switch (playerAxe.getType()) {
-		case WOODEN_AXE -> 2.0;
-		case STONE_AXE -> 4.0;
-		case IRON_AXE -> 6.0;
-		case DIAMOND_AXE -> 8.0;
-		case NETHERITE_AXE -> 9.0;
-		case GOLDEN_AXE -> 12.0;
-		default -> 1.0;
-		};
-		double cutting_speed = 3.0 / tool_multiplier;
-
-		if (efficiency_level > 0)
-			cutting_speed /= (Math.pow(efficiency_level, 2) + 1);
-		if (haste_level > 0)
-			cutting_speed /= (1 + 0.2 * haste_level);
-		final int cutting_speed_ticks = (int) Math.ceil(cutting_speed * 20);
+		if (leaf_count < 16 && leaf_count < (2 * log_count) && ConfigManager.requireLeaves()) {
+			return;
+		}
 
 		blocksToBreak.sort((a, b) -> {
 			if (isLog(a.getType()) && !isLog(b.getType()))
@@ -183,48 +101,80 @@ public class BreakBlockEventHandler implements Listener {
 		});
 
 		// Break all blocks and leaves
-		if (canceled)
-			blocksToBreak.clear();
-	
-		
-		for (int i = 0; i < blocksToBreak.size(); i++) {
-			Block b = blocksToBreak.get(i);
-			final long mult = isLog(b.getType()) ? 2 : 1;
-			Random r = new Random();
+
+		Player player = e.getPlayer();
+		ItemStack playerAxe = e.getPlayer().getInventory().getItemInMainHand();
+
+		// Checks if blocks are to break instantly or sequentially
+		if (ConfigManager.instantChop()) {
+			for (Block block : blocksToBreak) {
+				if (isLog(block.getType()))
+					Util.damageAxe(player, playerAxe);
+				Util.handleBreak(player, block);
+			}
+		} else {
+			int cutting_speed = Util.getCuttingSpeed(player, playerAxe);
+			for (int i = 0; i < blocksToBreak.size(); i++) {
+				Block b = blocksToBreak.get(i);
+				final long mult = isLog(b.getType()) ? 2 : 1;
+				new BukkitRunnable() {
+					@Override
+					public void run() {
+						// Break the block
+						Util.handleBreak(player, b);
+						// Play appropriate sound for block breaking
+						b.getWorld().playSound(b.getLocation(),
+								mult == 2 ? Sound.BLOCK_WOOD_BREAK : Sound.BLOCK_GRASS_BREAK, 0.1f, 1f);
+						// Damage the player's axe and account for unbreaking enchant
+						if (mult == 1)
+							return;
+						Util.damageAxe(player, playerAxe);
+					}
+				}.runTaskLater(Plugin, isLog(b.getType()) ? i * cutting_speed : i);
+			}
+		}
+
+		if (ConfigManager.replantSaplings()) {
+			int maxY = 256;
+			HashSet<Block> lowestYBlocks = new HashSet<Block>();
+			for (Block b : blocksToBreak) {
+				if (b.getY() < maxY) {
+					maxY = b.getY();
+					lowestYBlocks.clear();
+					lowestYBlocks.add(b);
+				} else if (b.getY() == maxY)
+					lowestYBlocks.add(b);
+			}
 			new BukkitRunnable() {
+
 				@Override
 				public void run() {
-					// Break the block
-					b.breakNaturally();
-					// Play appropriate sound for block breaking
-					b.getWorld().playSound(b.getLocation(),
-							mult == 2 ? Sound.BLOCK_WOOD_BREAK : Sound.BLOCK_GRASS_BREAK, 0.1f, 1f);
-
-					// Damage the player's axe and account for unbreaking enchant
-					if (mult == 1)
-						return;
-
-					if (r.nextDouble() < (1 / (1 + unbreaking_level)))
-						d.setDamage(d.getDamage() + 1);
-					playerAxe.setItemMeta(d);
+					lowestYBlocks.forEach(b -> {
+						if (b.getRelative(BlockFace.DOWN).getType().equals(Material.GRASS_BLOCK)
+								|| b.getRelative(BlockFace.DOWN).getType().equals(Material.DIRT)
+								|| b.getRelative(BlockFace.DOWN).getType().equals(Material.PODZOL))
+							b.setType(sapling_type);
+						else
+							b.getWorld().dropItemNaturally(b.getLocation().add(0.5, 0.5, 0.5),
+									new ItemStack(sapling_type, 1));
+					});
 				}
-			}.runTaskLater(Plugin, isLog(b.getType()) ? i * cutting_speed_ticks : i);
+			}.runTaskLater(Plugin, 2);
 		}
 
 	}
 
-	public static Block[] getAdjacentBlocks(Block b) {
-//		return new HashSet<Block>(Arrays.asList(b.getRelative(BlockFace.NORTH), b.getRelative(BlockFace.SOUTH),
-//				b.getRelative(BlockFace.EAST), b.getRelative(BlockFace.WEST), b.getRelative(BlockFace.UP),
-//				b.getRelative(BlockFace.DOWN)));
+	public static Block[] getNearbyBlocks(Block b) {
+		return new Block[] { b.getRelative(1, 0, 0), b.getRelative(-1, 0, 0), b.getRelative(0, 0, 1),
+				b.getRelative(0, 0, -1), b.getRelative(0, 1, 0), b.getRelative(0, -1, 0), b.getRelative(1, 0, 1),
+				b.getRelative(1, 0, -1), b.getRelative(-1, 0, 1), b.getRelative(-1, 0, -1), b.getRelative(1, 1, 0),
+				b.getRelative(-1, 1, 0), b.getRelative(0, 1, 1), b.getRelative(0, 1, -1), b.getRelative(1, 1, 1),
+				b.getRelative(1, 1, -1), b.getRelative(-1, 1, 1), b.getRelative(-1, 1, -1) };
+	}
 
-		return new Block[] {
-				   b.getRelative(1, 0, 0), b.getRelative(-1, 0, 0), b.getRelative(0, 0, 1), b.getRelative(0, 0, -1), 
-				   b.getRelative(0, 1, 0), b.getRelative(0, -1, 0), 
-				   b.getRelative(1, 0, 1), b.getRelative(1, 0, -1), b.getRelative(-1, 0, 1), b.getRelative(-1, 0, -1),
-				   b.getRelative(1, 1, 0), b.getRelative(-1, 1, 0), b.getRelative(0, 1, 1), b.getRelative(0, 1, -1),
-				   b.getRelative(1, 1, 1), b.getRelative(1, 1, -1), b.getRelative(-1, 1, 1), b.getRelative(-1, 1, -1)
-				};
+	public static Block[] getAdjacent(Block b) {
+		return new Block[] { b.getRelative(BlockFace.UP), b.getRelative(BlockFace.DOWN), b.getRelative(BlockFace.NORTH),
+				b.getRelative(BlockFace.WEST), b.getRelative(BlockFace.EAST), b.getRelative(BlockFace.SOUTH) };
 	}
 
 	public static HashSet<Block> getHorizontallyAdjacentBlocks(Block b) {

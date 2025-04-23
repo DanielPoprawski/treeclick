@@ -102,6 +102,14 @@ public class ConfigManager {
 		myPlugin.getServer().broadcastMessage("LEAF NOT FOUND");
 		return null;
 	}
+	
+	public static final boolean requireLeaves() {
+		return config.getBoolean("cutting.require_leaves");
+	}
+	
+	public static final boolean replantSaplings() {
+		return config.getBoolean("cutting.replant_saplings");
+	}
 
 	public static final boolean requireAxe() {
 		return config.getBoolean("cutting.require_axe");
@@ -116,7 +124,7 @@ public class ConfigManager {
 	}
 
 	public static final boolean useToolSpeed() {
-		return config.getBoolean("cutting.use_tool_speed");
+		return config.getInt("cutting.cutting_speed") == 0;
 	}
 
 	public static final int getCuttingSpeed() {

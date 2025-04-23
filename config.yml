@@ -24,17 +24,15 @@ worlds:
 cutting:
   require_axe: true
   # If true, entire tree will be chopped instantly
-  require_leaves: true
-  # If true, standalone logs won't be cut down - only trees with leaves growing out of the trunk.
+  require_leaves: true  
+  # If true, standalone logs won't be cut down - only trees with more leaves than logs in the trunk.
   instant_chop: true
-  # If false, tree will be chopped at the speed of the tool being used
-  # If true, each log will break one by one, depending on what axe you're using
-  use_tool_speed: true
-  # If false, tree will break layer by layer at determined speed (in ticks)
-  cutting_speed: 2
-  # Drop loot directly to player inventory
+  # If true, tree will be instantly cut down
+  cutting_speed: 0
+  # If set to 0, the cutting speed is based on the player's axe. Otherwise this specifies how fast in ticks each layer of wood will be cut
   drop_to_inventory: false
-  replant_saplings: true;
+  # Drop loot directly to player inventory
+  replant_saplings: true
   
 # Tree type definitions - each tree has its own leaf, log, and sapling type
   trees:
